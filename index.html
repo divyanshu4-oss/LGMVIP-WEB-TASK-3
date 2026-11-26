@@ -1,0 +1,1302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>Just For You</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Poppins:wght@400;500;600;700;800&display=swap');
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: #FFF8E7;
+      font-family: 'Poppins', system-ui, -apple-system, sans-serif;
+      transition: background-color 1.4s ease-in-out;
+    }
+
+    body.bg-light-red { background-color: #FFCDD2; }
+    body.bg-cream { background-color: #FFF8E7; }
+
+    /* Fullscreen FX canvas (bow/arrow, burst, growing tree) */
+    #fxCanvas {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 5;
+      pointer-events: auto;
+      touch-action: none;
+    }
+
+    #fxCanvas.inactive {
+      pointer-events: none;
+    }
+
+    /* Shared scene container */
+    .scene {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.9s ease, visibility 0.9s ease;
+      z-index: 10;
+      padding: 20px;
+      text-align: center;
+    }
+
+    .scene.active {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .scene.interactive.active {
+      pointer-events: auto;
+    }
+
+    /* ================= PHASE 1: HEART & BOW ================= */
+    #scene1 {
+      justify-content: space-between;
+      padding: 9vh 20px 8vh;
+    }
+
+    .top-title {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: clamp(1.7rem, 4.5vw, 3.2rem);
+      font-weight: 900;
+      color: #8B0000;
+      letter-spacing: 0.5px;
+      text-shadow: 0 2px 10px rgba(139, 0, 0, 0.15);
+    }
+
+    .heart-wrapper {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: clamp(180px, 34vw, 270px);
+      height: clamp(180px, 34vw, 270px);
+      transition: transform 0.25s ease, opacity 0.25s ease;
+    }
+
+    .heart-wrapper.hidden {
+      opacity: 0;
+      transform: scale(1.4);
+    }
+
+    .heart-3d {
+      width: 100%;
+      height: 100%;
+      filter: drop-shadow(0 18px 25px rgba(139, 0, 0, 0.35));
+      animation: heartbeat 1s infinite cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    }
+
+    @keyframes heartbeat {
+      0%   { transform: scale(1); }
+      14%  { transform: scale(1.14); }
+      28%  { transform: scale(1.02); }
+      42%  { transform: scale(1.1); }
+      70%  { transform: scale(1); }
+      100% { transform: scale(1); }
+    }
+
+    .hint-text {
+      font-size: clamp(0.85rem, 2vw, 1.05rem);
+      color: #7A2E2E;
+      font-weight: 500;
+      letter-spacing: 0.4px;
+      animation: pulseText 2s infinite ease-in-out;
+    }
+
+    @keyframes pulseText {
+      0%, 100% { opacity: 0.65; }
+      50% { opacity: 1; }
+    }
+
+    /* ================= PHASE 2: LIGHT RED MESSAGE ================= */
+    #scene2 {
+      justify-content: space-between;
+      padding: 10vh 24px;
+    }
+
+    .s2-top {
+      font-size: clamp(1.2rem, 3vw, 2rem);
+      font-weight: 600;
+      color: #7F0000;
+      opacity: 0;
+      transform: translateY(-14px);
+      transition: all 0.9s ease 0.2s;
+    }
+
+    .s2-middle {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: clamp(3.4rem, 13vw, 9.5rem);
+      font-weight: 900;
+      color: #9B0000;
+      line-height: 1.05;
+      letter-spacing: -1px;
+      text-shadow: 0 8px 30px rgba(155, 0, 0, 0.25);
+      opacity: 0;
+      transform: scale(0.85);
+      transition: all 1s ease 0.5s;
+    }
+
+    .s2-bottom {
+      font-size: clamp(1.05rem, 2.6vw, 1.65rem);
+      font-weight: 600;
+      color: #6D1B1B;
+      opacity: 0;
+      transform: translateY(14px);
+      transition: all 0.9s ease 0.8s;
+    }
+
+    #scene2.active .s2-top,
+    #scene2.active .s2-middle,
+    #scene2.active .s2-bottom {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+
+    /* ================= PHASE 3: TREE + LEFT CORNER TEXT ================= */
+    #scene3 {
+      align-items: flex-start;
+      justify-content: flex-start;
+      text-align: left;
+      padding: clamp(24px, 5vw, 56px);
+    }
+
+    .panda-line {
+      font-size: clamp(1.1rem, 2.8vw, 1.8rem);
+      font-weight: 600;
+      color: #5C2B29;
+      margin-bottom: 6px;
+    }
+
+    .love-glow {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: clamp(2.5rem, 7vw, 4.8rem);
+      font-weight: 900;
+      color: #C62828;
+      line-height: 1.1;
+      text-shadow:
+        0 0 12px rgba(255, 77, 109, 0.85),
+        0 0 28px rgba(255, 77, 109, 0.6),
+        0 0 48px rgba(213, 0, 50, 0.45);
+      animation: glowPulse 2.2s infinite alternate ease-in-out;
+    }
+
+    @keyframes glowPulse {
+      from {
+        text-shadow:
+          0 0 10px rgba(255, 77, 109, 0.7),
+          0 0 24px rgba(255, 77, 109, 0.45),
+          0 0 40px rgba(213, 0, 50, 0.3);
+      }
+      to {
+        text-shadow:
+          0 0 18px rgba(255, 77, 109, 1),
+          0 0 38px rgba(255, 77, 109, 0.85),
+          0 0 60px rgba(213, 0, 50, 0.65);
+      }
+    }
+
+    /* ================= PHASE 4: FROM ME TO YOU ================= */
+    #scene4 {
+      gap: 20px;
+    }
+
+    .final-title {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: clamp(2.6rem, 8vw, 5.8rem);
+      font-weight: 900;
+      color: #8B0000;
+      letter-spacing: 0.5px;
+      text-shadow: 0 4px 18px rgba(139, 0, 0, 0.14);
+    }
+
+    .couple-emoji {
+      width: clamp(130px, 26vw, 195px);
+      height: auto;
+      filter: drop-shadow(0 10px 18px rgba(0, 0, 0, 0.12));
+      animation: gentleFloat 3s ease-in-out infinite;
+    }
+
+    @keyframes gentleFloat {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-8px); }
+    }
+
+    /* ================= SHARED STAGE BUTTONS & HEADERS ================= */
+    .stage-heading {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: clamp(1.5rem, 4vw, 2.3rem);
+      font-weight: 900;
+      color: #8B0000;
+      margin-bottom: 6px;
+    }
+
+    .stage-sub {
+      font-size: clamp(0.85rem, 2.2vw, 1rem);
+      color: #6D3B3B;
+      margin-bottom: 18px;
+    }
+
+    .stage-btn {
+      margin-top: 20px;
+      background: linear-gradient(135deg, #B71C1C, #8B0000);
+      color: #FFF8E7;
+      border: none;
+      padding: 13px 28px;
+      border-radius: 999px;
+      font-family: 'Poppins', sans-serif;
+      font-size: clamp(0.9rem, 2.4vw, 1.02rem);
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: 0 8px 20px rgba(139, 0, 0, 0.28);
+      transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.3s ease, background 0.3s ease;
+    }
+
+    .stage-btn:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 24px rgba(139, 0, 0, 0.36);
+    }
+
+    .stage-btn:active:not(:disabled) {
+      transform: translateY(0);
+    }
+
+    .stage-btn:disabled {
+      background: #D5C5B5;
+      color: #7D6A5A;
+      box-shadow: none;
+      cursor: not-allowed;
+      opacity: 0.85;
+    }
+
+    /* ================= PHASE 5: SCRATCH CARD ================= */
+    .scratch-frame {
+      position: relative;
+      width: min(310px, 80vw);
+      aspect-ratio: 3 / 4;
+      max-height: 58vh;
+      border-radius: 20px;
+      overflow: hidden;
+      box-shadow:
+        0 18px 40px rgba(139, 0, 0, 0.2),
+        0 0 0 4px #E6C27A;
+      background: #2b1d1d;
+    }
+
+    .scratch-photo {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: center;
+      display: block;
+      pointer-events: none;
+    }
+
+    #scratchCanvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      cursor: grab;
+      touch-action: none;
+      transition: opacity 0.8s ease;
+    }
+
+    #scratchCanvas.revealed {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    /* ================= PHASE 6: 9-PIECE PUZZLE ================= */
+    .puzzle-board {
+      position: relative;
+      width: min(320px, 82vw);
+      aspect-ratio: 3 / 4;
+      max-height: 56vh;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      grid-template-rows: repeat(3, 1fr);
+      gap: 4px;
+      padding: 6px;
+      background: #E8D5B7;
+      border-radius: 18px;
+      box-shadow: 0 18px 38px rgba(139, 0, 0, 0.18);
+      touch-action: none;
+      transition: gap 0.5s ease, padding 0.5s ease, box-shadow 0.5s ease;
+    }
+
+    .puzzle-board.solved {
+      gap: 0;
+      padding: 0;
+      overflow: hidden;
+      box-shadow: 0 18px 45px rgba(183, 28, 28, 0.32), 0 0 0 4px #D4AF37;
+    }
+
+    .puzzle-tile {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      border-radius: 8px;
+      background-repeat: no-repeat;
+      background-size: 300% 300%;
+      cursor: grab;
+      transition: transform 0.18s ease, box-shadow 0.18s ease, border-radius 0.5s ease;
+      box-shadow: 0 3px 8px rgba(0, 0, 0, 0.18);
+    }
+
+    .puzzle-board.solved .puzzle-tile {
+      border-radius: 0;
+      box-shadow: none;
+      cursor: default;
+    }
+
+    .puzzle-tile.dragging-source {
+      opacity: 0.3;
+      transform: scale(0.95);
+    }
+
+    .puzzle-tile.drop-hover {
+      outline: 3px solid #B71C1C;
+      transform: scale(0.96);
+    }
+
+    .puzzle-ghost {
+      position: fixed;
+      z-index: 999;
+      pointer-events: none;
+      border-radius: 10px;
+      background-repeat: no-repeat;
+      background-size: 300% 300%;
+      box-shadow: 0 16px 32px rgba(0, 0, 0, 0.35);
+      transform: scale(1.06);
+    }
+
+    .puzzle-status {
+      margin-top: 12px;
+      min-height: 24px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: #B71C1C;
+    }
+
+    /* ================= PHASE 7: FINAL STAGE ================= */
+    #scene7 {
+      gap: 16px;
+    }
+
+    .final-badge {
+      font-size: 3.2rem;
+      animation: heartbeat 1.2s infinite;
+    }
+
+    .final-msg {
+      max-width: 460px;
+      font-size: clamp(1rem, 2.5vw, 1.2rem);
+      color: #5C2B29;
+      line-height: 1.6;
+    }
+
+    .replay-btn {
+      margin-top: 12px;
+      background: transparent;
+      border: 1.5px solid rgba(139, 0, 0, 0.4);
+      color: #8B0000;
+      padding: 9px 22px;
+      border-radius: 999px;
+      font-size: 0.92rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.25s ease;
+    }
+
+    .replay-btn:hover {
+      background: rgba(139, 0, 0, 0.08);
+    }
+  </style>
+</head>
+<body class="bg-cream">
+
+  <!-- Interactive Canvas (Bow & Arrow, Heart Burst, Growing Heart Tree) -->
+  <canvas id="fxCanvas"></canvas>
+
+  <!-- PHASE 1: BOW & BEATING HEART -->
+  <div id="scene1" class="scene active">
+    <h1 class="top-title">Laddo made this, just for you</h1>
+
+    <div class="heart-wrapper" id="heartWrapper">
+      <svg class="heart-3d" viewBox="0 0 200 185" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <radialGradient id="heartMain" cx="35%" cy="30%" r="70%">
+            <stop offset="0%" stop-color="#FF5E7E" />
+            <stop offset="35%" stop-color="#D90429" />
+            <stop offset="75%" stop-color="#8B0000" />
+            <stop offset="100%" stop-color="#59000A" />
+          </radialGradient>
+          <radialGradient id="heartSpec" cx="30%" cy="25%" r="35%">
+            <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.75" />
+            <stop offset="60%" stop-color="#FFB3C1" stop-opacity="0.2" />
+            <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0" />
+          </radialGradient>
+          <linearGradient id="rimLight" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#FFCCD5" stop-opacity="0.6" />
+            <stop offset="100%" stop-color="#3D0006" stop-opacity="0.4" />
+          </linearGradient>
+        </defs>
+        <path d="M100 172 C100 172 15 118 15 58 C15 24 42 5 70 5 C86 5 96 15 100 26 C104 15 114 5 130 5 C158 5 185 24 185 58 C185 118 100 172 100 172 Z"
+              fill="url(#heartMain)" stroke="url(#rimLight)" stroke-width="2" />
+        <ellipse cx="60" cy="45" rx="22" ry="14" transform="rotate(-28 60 45)" fill="url(#heartSpec)" />
+        <ellipse cx="136" cy="38" rx="12" ry="7" transform="rotate(20 136 38)" fill="url(#heartSpec)" opacity="0.65" />
+      </svg>
+    </div>
+
+    <p class="hint-text">stretch the arrow and break my heart</p>
+  </div>
+
+  <!-- PHASE 2: LIGHT RED MESSAGE -->
+  <div id="scene2" class="scene">
+    <div class="s2-top">This one is for you...</div>
+    <div class="s2-middle">I Love You</div>
+    <div class="s2-bottom">to the best thing that ever happened to me</div>
+  </div>
+
+  <!-- PHASE 3: GROWING HEART TREE -->
+  <div id="scene3" class="scene">
+    <div class="panda-box">
+      <div class="panda-line">made for you, my panda</div>
+      <div class="love-glow">I love you</div>
+    </div>
+  </div>
+
+  <!-- PHASE 4: FROM ME TO YOU -->
+  <div id="scene4" class="scene interactive">
+    <div class="final-title">From me to you</div>
+
+    <svg class="couple-emoji" viewBox="0 0 220 170" xmlns="http://www.w3.org/2000/svg" aria-label="Boy and girl sitting holding hands">
+      <rect x="20" y="138" width="180" height="14" rx="7" fill="#D7B49E" />
+      <rect x="38" y="150" width="12" height="16" rx="4" fill="#B58E74" />
+      <rect x="170" y="150" width="12" height="16" rx="4" fill="#B58E74" />
+      <path d="M110 38 C110 38 97 29 97 21 C97 16 101 13 105 13 C108 13 109.5 15 110 17 C110.5 15 112 13 115 13 C119 13 123 16 123 21 C123 29 110 38 110 38 Z"
+            fill="#E53935" />
+      <!-- Boy -->
+      <path d="M58 130 L52 152" stroke="#3949AB" stroke-width="11" stroke-linecap="round" />
+      <path d="M74 130 L74 152" stroke="#3949AB" stroke-width="11" stroke-linecap="round" />
+      <rect x="48" y="88" width="38" height="46" rx="16" fill="#42A5F5" />
+      <circle cx="67" cy="64" r="21" fill="#FFD1A9" />
+      <path d="M46 62 C46 43 88 43 88 62 C82 52 54 52 46 62 Z" fill="#3E2723" />
+      <circle cx="61" cy="64" r="2.3" fill="#3E2723" />
+      <circle cx="74" cy="64" r="2.3" fill="#3E2723" />
+      <path d="M62 72 Q68 77 74 72" stroke="#8D4E3B" stroke-width="2.2" fill="none" stroke-linecap="round" />
+      <circle cx="55" cy="69" r="3" fill="#FF8A80" opacity="0.55" />
+      <!-- Girl -->
+      <path d="M132 58 C126 88 128 106 136 110 L170 110 C178 106 180 88 174 58 Z" fill="#4E2A1E" />
+      <path d="M146 130 L146 152" stroke="#FFD1A9" stroke-width="10" stroke-linecap="round" />
+      <path d="M162 130 L168 152" stroke="#FFD1A9" stroke-width="10" stroke-linecap="round" />
+      <path d="M136 90 C136 86 170 86 170 90 L178 134 C178 138 128 138 128 134 Z" fill="#F06292" />
+      <circle cx="153" cy="64" r="21" fill="#FFD1A9" />
+      <path d="M132 62 C133 41 174 41 174 62 C166 51 142 51 132 62 Z" fill="#4E2A1E" />
+      <circle cx="146" cy="64" r="2.3" fill="#3E2723" />
+      <circle cx="159" cy="64" r="2.3" fill="#3E2723" />
+      <path d="M146 72 Q152 77 158 72" stroke="#8D4E3B" stroke-width="2.2" fill="none" stroke-linecap="round" />
+      <circle cx="165" cy="69" r="3" fill="#FF8A80" opacity="0.55" />
+      <!-- Holding hands -->
+      <path d="M84 102 Q97 112 108 110" stroke="#42A5F5" stroke-width="9" fill="none" stroke-linecap="round" />
+      <path d="M136 102 Q123 112 112 110" stroke="#F06292" stroke-width="9" fill="none" stroke-linecap="round" />
+      <circle cx="107" cy="110" r="6" fill="#FFD1A9" />
+      <circle cx="113" cy="110" r="6" fill="#FFD1A9" />
+    </svg>
+
+    <button class="stage-btn" id="toScratchBtn">Continue →</button>
+  </div>
+
+  <!-- PHASE 5: GOLDEN SCRATCH CARD (CAT PHOTO) -->
+  <div id="scene5" class="scene interactive">
+    <h2 class="stage-heading">A Little Surprise</h2>
+    <p class="stage-sub">Rub the golden card to reveal our memory</p>
+
+    <div class="scratch-frame" id="scratchFrame">
+      <img src="IMG_2509.jpeg" alt="Memory with our cat" class="scratch-photo" />
+      <canvas id="scratchCanvas"></canvas>
+    </div>
+
+    <button class="stage-btn" id="scratchNextBtn" disabled>
+      Scratch above to proceed next stage
+    </button>
+  </div>
+
+  <!-- PHASE 6: 9-PIECE DRAG & DROP PUZZLE (MOUNTAIN PHOTO) -->
+  <div id="scene6" class="scene interactive">
+    <h2 class="stage-heading">Put Us Back Together</h2>
+    <p class="stage-sub">Drag and swap the pieces to complete the picture</p>
+
+    <div class="puzzle-board" id="puzzleBoard"></div>
+    <div class="puzzle-status" id="puzzleStatus"></div>
+
+    <button class="stage-btn" id="puzzleNextBtn" disabled>
+      Solve the puzzle for final stage
+    </button>
+  </div>
+
+  <!-- PHASE 7: FINAL STAGE -->
+  <div id="scene7" class="scene interactive">
+    <div class="final-badge">❤️</div>
+    <div class="final-title">Forever Yours</div>
+    <p class="final-msg">Every little moment with you is my favourite memory. Thank you for being mine.</p>
+    <button class="replay-btn" id="replayBtn">Watch Again</button>
+  </div>
+
+  <script>
+    const PUZZLE_IMAGE_SRC = 'eab311a5-a57d-4879-b589-ca0967489adc.jpeg';
+
+    const canvas = document.getElementById('fxCanvas');
+    const ctx = canvas.getContext('2d');
+
+    const scene1 = document.getElementById('scene1');
+    const scene2 = document.getElementById('scene2');
+    const scene3 = document.getElementById('scene3');
+    const scene4 = document.getElementById('scene4');
+    const scene5 = document.getElementById('scene5');
+    const scene6 = document.getElementById('scene6');
+    const scene7 = document.getElementById('scene7');
+
+    const heartWrapper = document.getElementById('heartWrapper');
+    const toScratchBtn = document.getElementById('toScratchBtn');
+    const scratchNextBtn = document.getElementById('scratchNextBtn');
+    const puzzleNextBtn = document.getElementById('puzzleNextBtn');
+    const replayBtn = document.getElementById('replayBtn');
+
+    let W = window.innerWidth;
+    let H = window.innerHeight;
+
+    function resizeFxCanvas() {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      W = window.innerWidth;
+      H = window.innerHeight;
+      canvas.width = W * dpr;
+      canvas.height = H * dpr;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+    window.addEventListener('resize', resizeFxCanvas);
+    resizeFxCanvas();
+
+    // Phases: 'bow' | 'flying' | 'burst' | 'redMessage' | 'tree' | 'fromMe' | 'scratch' | 'puzzle' | 'final'
+    let phase = 'bow';
+
+    // ================= BOW & ARROW =================
+    function getBowPos() {
+      return {
+        x: Math.max(70, W * 0.13),
+        y: Math.min(H - 95, H * 0.78)
+      };
+    }
+
+    function getHeartCenter() {
+      const rect = heartWrapper.getBoundingClientRect();
+      return {
+        x: rect.left + rect.width / 2,
+        y: rect.top + rect.height / 2,
+        r: Math.min(rect.width, rect.height) * 0.42
+      };
+    }
+
+    let isDraggingBow = false;
+    let aimAngle = -Math.PI / 5;
+    let pullPower = 0;
+    const maxPull = 95;
+    let arrow = { x: 0, y: 0, vx: 0, vy: 0, angle: 0, active: false };
+    let particles = [];
+
+    function spawnHeartBurst(cx, cy) {
+      particles = [];
+      const colors = ['#D90429', '#EF233C', '#FF4D6D', '#8B0000', '#FF758F', '#FFB3C1'];
+      for (let i = 0; i < 85; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const speed = 2.5 + Math.random() * 11;
+        particles.push({
+          x: cx + (Math.random() - 0.5) * 40,
+          y: cy + (Math.random() - 0.5) * 40,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed - 2,
+          size: 7 + Math.random() * 14,
+          color: colors[Math.floor(Math.random() * colors.length)],
+          alpha: 1,
+          rot: Math.random() * Math.PI * 2,
+          vRot: (Math.random() - 0.5) * 0.18
+        });
+      }
+    }
+
+    function drawMiniHeart(x, y, size, color, alpha, rot = 0) {
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(rot);
+      ctx.globalAlpha = Math.max(0, alpha);
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      const s = size * 0.5;
+      ctx.moveTo(0, s * 0.6);
+      ctx.bezierCurveTo(-s * 1.2, -s * 0.4, -s * 0.6, -s * 1.4, 0, -s * 0.5);
+      ctx.bezierCurveTo(s * 0.6, -s * 1.4, s * 1.2, -s * 0.4, 0, s * 0.6);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    function getPointer(e, el) {
+      const rect = el.getBoundingClientRect();
+      return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+    }
+
+    canvas.addEventListener('pointerdown', (e) => {
+      if (phase !== 'bow') return;
+      const p = getPointer(e, canvas);
+      const bow = getBowPos();
+      if (Math.hypot(p.x - bow.x, p.y - bow.y) < 130) {
+        isDraggingBow = true;
+        canvas.setPointerCapture(e.pointerId);
+        updateBowPull(p);
+      }
+    });
+
+    canvas.addEventListener('pointermove', (e) => {
+      if (!isDraggingBow || phase !== 'bow') return;
+      updateBowPull(getPointer(e, canvas));
+    });
+
+    canvas.addEventListener('pointerup', () => {
+      if (!isDraggingBow || phase !== 'bow') return;
+      isDraggingBow = false;
+      if (pullPower > 22) {
+        shootArrow();
+      } else {
+        pullPower = 0;
+      }
+    });
+
+    function updateBowPull(p) {
+      const bow = getBowPos();
+      const dx = bow.x - p.x;
+      const dy = bow.y - p.y;
+      const dist = Math.hypot(dx, dy);
+      if (dist > 4) aimAngle = Math.atan2(dy, dx);
+      pullPower = Math.min(dist, maxPull);
+    }
+
+    function shootArrow() {
+      const bow = getBowPos();
+      const heart = getHeartCenter();
+      const idealAngle = Math.atan2(heart.y - bow.y, heart.x - bow.x);
+      const angleDiff = Math.atan2(Math.sin(idealAngle - aimAngle), Math.cos(idealAngle - aimAngle));
+      const finalAngle = Math.abs(angleDiff) < 0.75 ? idealAngle : aimAngle;
+
+      const speed = 18 + (pullPower / maxPull) * 10;
+      arrow = {
+        x: bow.x, y: bow.y,
+        vx: Math.cos(finalAngle) * speed,
+        vy: Math.sin(finalAngle) * speed,
+        angle: finalAngle, active: true
+      };
+      pullPower = 0;
+      phase = 'flying';
+    }
+
+    function drawBowAndArrow() {
+      const bow = getBowPos();
+      const heart = getHeartCenter();
+      const currentAngle = isDraggingBow
+        ? aimAngle
+        : Math.atan2(heart.y - bow.y, heart.x - bow.x);
+
+      ctx.save();
+      ctx.translate(bow.x, bow.y);
+      ctx.rotate(currentAngle);
+
+      const bowR = 46;
+      const pullDist = isDraggingBow ? pullPower : 0;
+      const bend = pullDist * 0.14;
+
+      if (!isDraggingBow && phase === 'bow') {
+        const pulse = 0.5 + 0.5 * Math.sin(Date.now() * 0.005);
+        ctx.beginPath();
+        ctx.arc(-18, 0, 14 + pulse * 8, 0, Math.PI * 2);
+        ctx.strokeStyle = `rgba(139, 0, 0, ${0.35 - pulse * 0.25})`;
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      }
+
+      if (isDraggingBow && pullDist > 12) {
+        ctx.save();
+        ctx.setLineDash([6, 8]);
+        ctx.beginPath();
+        ctx.moveTo(25, 0);
+        ctx.lineTo(240, 0);
+        ctx.strokeStyle = 'rgba(139, 0, 0, 0.35)';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      const tipX = -8 - bend;
+      const tipY = bowR;
+      const stringPullX = -10 - pullDist * 0.65;
+
+      ctx.beginPath();
+      ctx.moveTo(tipX, -tipY);
+      ctx.lineTo(stringPullX, 0);
+      ctx.lineTo(tipX, tipY);
+      ctx.strokeStyle = '#6D4C41';
+      ctx.lineWidth = 2.2;
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.moveTo(tipX, -tipY);
+      ctx.quadraticCurveTo(32 - bend * 0.3, 0, tipX, tipY);
+      ctx.strokeStyle = '#5D2906';
+      ctx.lineWidth = 6.5;
+      ctx.lineCap = 'round';
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.moveTo(14, -9);
+      ctx.lineTo(14, 9);
+      ctx.strokeStyle = '#D4AF37';
+      ctx.lineWidth = 7;
+      ctx.stroke();
+
+      if (phase === 'bow') drawArrowShape(stringPullX, 0, 74);
+      ctx.restore();
+    }
+
+    function drawArrowShape(startX, y, length) {
+      const endX = startX + length;
+      ctx.beginPath();
+      ctx.moveTo(startX, y);
+      ctx.lineTo(endX, y);
+      ctx.strokeStyle = '#4E342E';
+      ctx.lineWidth = 3;
+      ctx.stroke();
+
+      ctx.fillStyle = '#C62828';
+      ctx.beginPath();
+      ctx.moveTo(startX, y);
+      ctx.lineTo(startX + 12, y - 7);
+      ctx.lineTo(startX + 18, y);
+      ctx.lineTo(startX + 12, y + 7);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.fillStyle = '#B71C1C';
+      ctx.beginPath();
+      ctx.moveTo(endX + 10, y);
+      ctx.lineTo(endX - 4, y - 7);
+      ctx.lineTo(endX, y);
+      ctx.lineTo(endX - 4, y + 7);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    // ================= GROWING HEART TREE =================
+    let branches = [];
+    let heartLeaves = [];
+    let fallingHearts = [];
+    let treeDone = false;
+    let treeCompleteTimer = null;
+    let treeTick = 0;
+
+    function initTree() {
+      branches = [];
+      heartLeaves = [];
+      fallingHearts = [];
+      treeDone = false;
+      treeTick = 0;
+
+      const startX = W > 700 ? W * 0.58 : W * 0.52;
+      const startY = H;
+      const trunkLen = Math.min(H * 0.24, 170);
+
+      function buildBranch(x, y, len, angle, width, depth, delay) {
+        const endX = x + Math.cos(angle) * len;
+        const endY = y + Math.sin(angle) * len;
+        branches.push({ x1: x, y1: y, x2: endX, y2: endY, width, depth, delay, progress: 0 });
+
+        if (depth <= 0) {
+          const leafColors = ['#D90429', '#EF233C', '#FF4D6D', '#FF758F', '#C9184A', '#FF8FA3'];
+          const count = 4 + Math.floor(Math.random() * 4);
+          for (let i = 0; i < count; i++) {
+            heartLeaves.push({
+              x: endX + (Math.random() - 0.5) * 44,
+              y: endY + (Math.random() - 0.5) * 44,
+              targetSize: 10 + Math.random() * 12,
+              size: 0,
+              color: leafColors[Math.floor(Math.random() * leafColors.length)],
+              rot: (Math.random() - 0.5) * 0.7,
+              delay: delay + 18 + Math.random() * 35
+            });
+          }
+          return;
+        }
+
+        const subCount = depth === 6 ? 2 : (Math.random() > 0.3 ? 2 : 3);
+        for (let i = 0; i < subCount; i++) {
+          const spread = subCount === 2
+            ? (i === 0 ? -0.38 : 0.38) + (Math.random() - 0.5) * 0.16
+            : (i - 1) * 0.42 + (Math.random() - 0.5) * 0.14;
+          buildBranch(
+            endX, endY,
+            len * (0.68 + Math.random() * 0.12),
+            angle + spread,
+            Math.max(1.8, width * 0.68),
+            depth - 1,
+            delay + 16
+          );
+        }
+      }
+
+      buildBranch(startX, startY, trunkLen, -Math.PI / 2, Math.min(22, W * 0.028), 6, 0);
+    }
+
+    function updateAndDrawTree() {
+      treeTick++;
+      let allBranchesDone = true;
+      let allLeavesDone = true;
+
+      ctx.lineCap = 'round';
+      for (const b of branches) {
+        if (treeTick > b.delay) {
+          if (b.progress < 1) {
+            b.progress = Math.min(1, b.progress + 0.065);
+            allBranchesDone = false;
+          }
+          ctx.beginPath();
+          ctx.moveTo(b.x1, b.y1);
+          ctx.lineTo(b.x1 + (b.x2 - b.x1) * b.progress, b.y1 + (b.y2 - b.y1) * b.progress);
+          ctx.strokeStyle = '#5D4037';
+          ctx.lineWidth = b.width;
+          ctx.stroke();
+        } else {
+          allBranchesDone = false;
+        }
+      }
+
+      for (const l of heartLeaves) {
+        if (treeTick > l.delay) {
+          if (l.size < l.targetSize) {
+            l.size = Math.min(l.targetSize, l.size + 0.85);
+            allLeavesDone = false;
+          }
+          drawMiniHeart(l.x, l.y, l.size, l.color, 0.94, l.rot);
+        } else {
+          allLeavesDone = false;
+        }
+      }
+
+      if (allBranchesDone && Math.random() < 0.08 && heartLeaves.length > 0) {
+        const src = heartLeaves[Math.floor(Math.random() * heartLeaves.length)];
+        fallingHearts.push({
+          x: src.x, y: src.y,
+          vx: (Math.random() - 0.5) * 0.8,
+          vy: 0.7 + Math.random() * 1.1,
+          size: 8 + Math.random() * 6,
+          color: src.color, alpha: 0.9, rot: Math.random() * Math.PI
+        });
+      }
+
+      for (let i = fallingHearts.length - 1; i >= 0; i--) {
+        const f = fallingHearts[i];
+        f.x += f.vx + Math.sin(treeTick * 0.04 + i) * 0.4;
+        f.y += f.vy;
+        f.rot += 0.02;
+        f.alpha -= 0.004;
+        drawMiniHeart(f.x, f.y, f.size, f.color, f.alpha, f.rot);
+        if (f.y > H + 20 || f.alpha <= 0) fallingHearts.splice(i, 1);
+      }
+
+      if (allBranchesDone && allLeavesDone && !treeDone) {
+        treeDone = true;
+        treeCompleteTimer = setTimeout(() => goToFromMeScene(), 2400);
+      }
+    }
+
+    // ================= SCENE TRANSITIONS =================
+    function hideAllScenes() {
+      [scene1, scene2, scene3, scene4, scene5, scene6, scene7].forEach(s => s.classList.remove('active'));
+    }
+
+    function triggerHeartHit() {
+      phase = 'burst';
+      const heart = getHeartCenter();
+      heartWrapper.classList.add('hidden');
+      scene1.classList.remove('active');
+      spawnHeartBurst(heart.x, heart.y);
+
+      document.body.classList.remove('bg-cream');
+      document.body.classList.add('bg-light-red');
+
+      setTimeout(() => {
+        phase = 'redMessage';
+        scene2.classList.add('active');
+
+        setTimeout(() => {
+          scene2.classList.remove('active');
+          document.body.classList.remove('bg-light-red');
+          document.body.classList.add('bg-cream');
+
+          setTimeout(() => {
+            phase = 'tree';
+            initTree();
+            scene3.classList.add('active');
+          }, 700);
+        }, 3000);
+      }, 450);
+    }
+
+    function goToFromMeScene() {
+      scene3.classList.remove('active');
+      setTimeout(() => {
+        phase = 'fromMe';
+        canvas.classList.add('inactive');
+        ctx.clearRect(0, 0, W, H);
+        scene4.classList.add('active');
+      }, 850);
+    }
+
+    toScratchBtn.addEventListener('click', () => {
+      scene4.classList.remove('active');
+      setTimeout(() => {
+        phase = 'scratch';
+        scene5.classList.add('active');
+        initScratchCard();
+      }, 400);
+    });
+
+    scratchNextBtn.addEventListener('click', () => {
+      scene5.classList.remove('active');
+      setTimeout(() => {
+        phase = 'puzzle';
+        scene6.classList.add('active');
+        initPuzzle();
+      }, 400);
+    });
+
+    puzzleNextBtn.addEventListener('click', () => {
+      scene6.classList.remove('active');
+      setTimeout(() => {
+        phase = 'final';
+        scene7.classList.add('active');
+      }, 400);
+    });
+
+    // ================= PHASE 5: GOLDEN SCRATCH CARD =================
+    const scratchCanvas = document.getElementById('scratchCanvas');
+    const sCtx = scratchCanvas.getContext('2d', { willReadFrequently: true });
+    let isScratching = false;
+    let scratchUnlocked = false;
+    let scratchCheckCounter = 0;
+
+    function initScratchCard() {
+      scratchUnlocked = false;
+      scratchCheckCounter = 0;
+      scratchCanvas.classList.remove('revealed');
+      scratchNextBtn.disabled = true;
+      scratchNextBtn.textContent = 'Scratch above to proceed next stage';
+
+      const rect = scratchCanvas.getBoundingClientRect();
+      scratchCanvas.width = rect.width;
+      scratchCanvas.height = rect.height;
+
+      // Rich metallic golden gradient
+      const grad = sCtx.createLinearGradient(0, 0, scratchCanvas.width, scratchCanvas.height);
+      grad.addColorStop(0, '#D4AF37');
+      grad.addColorStop(0.28, '#F9E076');
+      grad.addColorStop(0.5, '#C59B27');
+      grad.addColorStop(0.75, '#F5D56B');
+      grad.addColorStop(1, '#B8860B');
+
+      sCtx.globalCompositeOperation = 'source-over';
+      sCtx.fillStyle = grad;
+      sCtx.fillRect(0, 0, scratchCanvas.width, scratchCanvas.height);
+
+      // Subtle shimmer sparkles on gold layer
+      for (let i = 0; i < 120; i++) {
+        sCtx.fillStyle = `rgba(255, 255, 255, ${Math.random() * 0.35})`;
+        sCtx.beginPath();
+        sCtx.arc(
+          Math.random() * scratchCanvas.width,
+          Math.random() * scratchCanvas.height,
+          Math.random() * 2.2,
+          0, Math.PI * 2
+        );
+        sCtx.fill();
+      }
+
+      // Prompt text etched onto gold foil
+      sCtx.fillStyle = 'rgba(105, 68, 8, 0.78)';
+      sCtx.font = '700 20px Poppins, sans-serif';
+      sCtx.textAlign = 'center';
+      sCtx.textBaseline = 'middle';
+      sCtx.fillText('✨ Scratch Here ✨', scratchCanvas.width / 2, scratchCanvas.height / 2);
+    }
+
+    function scratchAt(x, y) {
+      if (scratchUnlocked) return;
+      sCtx.globalCompositeOperation = 'destination-out';
+      sCtx.beginPath();
+      sCtx.arc(x, y, 28, 0, Math.PI * 2);
+      sCtx.fill();
+
+      scratchCheckCounter++;
+      if (scratchCheckCounter % 8 === 0) checkScratchProgress();
+    }
+
+    function checkScratchProgress() {
+      const data = sCtx.getImageData(0, 0, scratchCanvas.width, scratchCanvas.height).data;
+      let cleared = 0;
+      const totalPixels = data.length / 4;
+      // Sample every 8th pixel for speed
+      for (let i = 3; i < data.length; i += 32) {
+        if (data[i] < 128) cleared++;
+      }
+      const percent = cleared / (totalPixels / 8);
+
+      if (percent >= 0.45 && !scratchUnlocked) {
+        scratchUnlocked = true;
+        scratchCanvas.classList.add('revealed');
+        scratchNextBtn.disabled = false;
+        scratchNextBtn.textContent = 'Proceed to Next Stage →';
+      }
+    }
+
+    scratchCanvas.addEventListener('pointerdown', (e) => {
+      if (scratchUnlocked) return;
+      isScratching = true;
+      scratchCanvas.setPointerCapture(e.pointerId);
+      const p = getPointer(e, scratchCanvas);
+      scratchAt(p.x, p.y);
+    });
+
+    scratchCanvas.addEventListener('pointermove', (e) => {
+      if (!isScratching || scratchUnlocked) return;
+      const p = getPointer(e, scratchCanvas);
+      scratchAt(p.x, p.y);
+    });
+
+    scratchCanvas.addEventListener('pointerup', () => {
+      isScratching = false;
+      if (!scratchUnlocked) checkScratchProgress();
+    });
+
+    // ================= PHASE 6: 9-PIECE DRAG & DROP PUZZLE =================
+    const puzzleBoard = document.getElementById('puzzleBoard');
+    const puzzleStatus = document.getElementById('puzzleStatus');
+    let puzzleOrder = [];
+    let puzzleSolved = false;
+
+    function initPuzzle() {
+      puzzleSolved = false;
+      puzzleBoard.classList.remove('solved');
+      puzzleStatus.textContent = '';
+      puzzleNextBtn.disabled = true;
+      puzzleNextBtn.textContent = 'Solve the puzzle for final stage';
+
+      // Create shuffled array [0..8] that isn't already solved
+      puzzleOrder = [0, 1, 2, 3, 4, 5, 6, 7, 8];
+      do {
+        for (let i = puzzleOrder.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [puzzleOrder[i], puzzleOrder[j]] = [puzzleOrder[j], puzzleOrder[i]];
+        }
+      } while (puzzleOrder.every((val, idx) => val === idx));
+
+      renderPuzzle();
+    }
+
+    function applyTileBg(el, pieceIndex) {
+      const col = pieceIndex % 3;
+      const row = Math.floor(pieceIndex / 3);
+      el.style.backgroundImage = `url('${PUZZLE_IMAGE_SRC}')`;
+      el.style.backgroundPosition = `${col * 50}% ${row * 50}%`;
+    }
+
+    function renderPuzzle() {
+      puzzleBoard.innerHTML = '';
+      puzzleOrder.forEach((pieceIndex, slotIndex) => {
+        const tile = document.createElement('div');
+        tile.className = 'puzzle-tile';
+        tile.dataset.slot = slotIndex;
+        applyTileBg(tile, pieceIndex);
+        tile.addEventListener('pointerdown', onTilePointerDown);
+        puzzleBoard.appendChild(tile);
+      });
+    }
+
+    // Smooth pointer-based drag-and-swap (works on both desktop and mobile touch)
+    let dragSlot = null;
+    let ghostEl = null;
+    let offsetX = 0;
+    let offsetY = 0;
+    let hoveredSlot = null;
+
+    function onTilePointerDown(e) {
+      if (puzzleSolved) return;
+      const tile = e.currentTarget;
+      dragSlot = Number(tile.dataset.slot);
+
+      const rect = tile.getBoundingClientRect();
+      offsetX = e.clientX - rect.left;
+      offsetY = e.clientY - rect.top;
+
+      tile.classList.add('dragging-source');
+
+      ghostEl = document.createElement('div');
+      ghostEl.className = 'puzzle-ghost';
+      ghostEl.style.width = `${rect.width}px`;
+      ghostEl.style.height = `${rect.height}px`;
+      ghostEl.style.left = `${rect.left}px`;
+      ghostEl.style.top = `${rect.top}px`;
+      applyTileBg(ghostEl, puzzleOrder[dragSlot]);
+      document.body.appendChild(ghostEl);
+
+      window.addEventListener('pointermove', onTilePointerMove);
+      window.addEventListener('pointerup', onTilePointerUp);
+    }
+
+    function onTilePointerMove(e) {
+      if (!ghostEl) return;
+      ghostEl.style.left = `${e.clientX - offsetX}px`;
+      ghostEl.style.top = `${e.clientY - offsetY}px`;
+
+      // Highlight the tile currently underneath the pointer
+      const elUnder = document.elementFromPoint(e.clientX, e.clientY);
+      const targetTile = elUnder ? elUnder.closest('.puzzle-tile') : null;
+
+      document.querySelectorAll('.puzzle-tile.drop-hover').forEach(t => t.classList.remove('drop-hover'));
+      if (targetTile && Number(targetTile.dataset.slot) !== dragSlot) {
+        hoveredSlot = Number(targetTile.dataset.slot);
+        targetTile.classList.add('drop-hover');
+      } else {
+        hoveredSlot = null;
+      }
+    }
+
+    function onTilePointerUp() {
+      window.removeEventListener('pointermove', onTilePointerMove);
+      window.removeEventListener('pointerup', onTilePointerUp);
+
+      if (ghostEl) {
+        ghostEl.remove();
+        ghostEl = null;
+      }
+
+      document.querySelectorAll('.puzzle-tile').forEach(t => {
+        t.classList.remove('dragging-source', 'drop-hover');
+      });
+
+      if (dragSlot !== null && hoveredSlot !== null && dragSlot !== hoveredSlot) {
+        [puzzleOrder[dragSlot], puzzleOrder[hoveredSlot]] = [puzzleOrder[hoveredSlot], puzzleOrder[dragSlot]];
+        renderPuzzle();
+        checkPuzzleSolved();
+      }
+
+      dragSlot = null;
+      hoveredSlot = null;
+    }
+
+    function checkPuzzleSolved() {
+      if (puzzleOrder.every((val, idx) => val === idx)) {
+        puzzleSolved = true;
+        puzzleBoard.classList.add('solved');
+        puzzleStatus.textContent = 'You solved it! ❤️';
+        puzzleNextBtn.disabled = false;
+        puzzleNextBtn.textContent = 'Proceed to Final Stage →';
+      }
+    }
+
+    // ================= RESET / WATCH AGAIN =================
+    function resetAll() {
+      clearTimeout(treeCompleteTimer);
+      hideAllScenes();
+      document.body.classList.remove('bg-light-red');
+      document.body.classList.add('bg-cream');
+      heartWrapper.classList.remove('hidden');
+      canvas.classList.remove('inactive');
+      particles = [];
+      branches = [];
+      heartLeaves = [];
+      fallingHearts = [];
+      arrow.active = false;
+      phase = 'bow';
+      setTimeout(() => scene1.classList.add('active'), 200);
+    }
+
+    replayBtn.addEventListener('click', resetAll);
+
+    // ================= MAIN FX LOOP =================
+    function animate() {
+      ctx.clearRect(0, 0, W, H);
+
+      if (phase === 'bow' || phase === 'flying') {
+        drawBowAndArrow();
+      }
+
+      if (phase === 'flying' && arrow.active) {
+        arrow.x += arrow.vx;
+        arrow.y += arrow.vy;
+
+        ctx.save();
+        ctx.translate(arrow.x, arrow.y);
+        ctx.rotate(arrow.angle);
+        drawArrowShape(-50, 0, 74);
+        ctx.restore();
+
+        const heart = getHeartCenter();
+        if (Math.hypot(arrow.x - heart.x, arrow.y - heart.y) < heart.r) {
+          arrow.active = false;
+          triggerHeartHit();
+        } else if (arrow.x > W + 100 || arrow.x < -100 || arrow.y > H + 100 || arrow.y < -100) {
+          arrow.active = false;
+          phase = 'bow';
+        }
+      }
+
+      if (particles.length > 0) {
+        for (let i = particles.length - 1; i >= 0; i--) {
+          const p = particles[i];
+          p.x += p.vx;
+          p.y += p.vy;
+          p.vy += 0.14;
+          p.vx *= 0.99;
+          p.rot += p.vRot;
+          p.alpha -= 0.015;
+          drawMiniHeart(p.x, p.y, p.size, p.color, p.alpha, p.rot);
+          if (p.alpha <= 0) particles.splice(i, 1);
+        }
+      }
+
+      if (phase === 'tree') {
+        updateAndDrawTree();
+      }
+
+      requestAnimationFrame(animate);
+    }
+
+    animate();
+  </script>
+</body>
+</html>
